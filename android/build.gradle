@@ -1,6 +1,7 @@
 group 'dev.pharsh.flutter_fling'
 version '1.0-SNAPSHOT'
 
+
 buildscript {
     repositories {
         google()
@@ -8,7 +9,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.2.1'
+        classpath 'com.android.tools.build:gradle:8.0.0'
     }
 }
 
@@ -23,15 +24,17 @@ apply plugin: 'com.android.library'
 
 android {
     namespace "dev.pharsh.flutter_fling"
-    compileSdkVersion 28
+    compileSdk 36
 
     defaultConfig {
         minSdkVersion 16
+        targetSdkVersion 33
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     lintOptions {
         disable 'InvalidPackage'
     }
+
 }
 
 dependencies {

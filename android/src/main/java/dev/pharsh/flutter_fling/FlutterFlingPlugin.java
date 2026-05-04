@@ -1,7 +1,9 @@
 package dev.pharsh.flutter_fling;
 
+import android.content.Context;
 import android.util.Log;
 
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import com.amazon.whisperplay.fling.media.controller.DiscoveryController;
 import com.amazon.whisperplay.fling.media.controller.RemoteMediaPlayer;
 import com.amazon.whisperplay.fling.media.service.CustomMediaPlayer;
@@ -18,31 +20,39 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 
 /**
  * FlutterFlingPlugin
  */
-public class FlutterFlingPlugin implements MethodCallHandler {
+public class FlutterFlingPlugin implements FlutterPlugin, MethodCallHandler {
+    private static final String METHOD_CHANNEL = "flutter_fling";
     private static final String DISCOVERY_CONTROLLER_STREAM = "flutter_fling/discoveryControllerStream";
     private static final String PLAYER_STATE_STREAM = "flutter_fling/playerStateStream";
-    private final FlingSdk flingSdk;
+    private MethodChannel methodChannel;
+    private FlingSdk flingSdk;
 
     static class Status {
         long mPosition;
         MediaState mState;
         MediaPlayerStatus.MediaCondition mCond;
     }
-
-    private FlutterFlingPlugin(Registrar registrar) {
-        flingSdk = new FlingSdk(registrar);
+    @Override
+    public void onAttachedToEngine(FlutterPlugin.FlutterPluginBinding binding) {
+        flingSdk = new FlingSdk(binding.getApplicationContext(), binding.getBinaryMessenger());
+        methodChannel = new MethodChannel(binding.getBinaryMessenger(), METHOD_CHANNEL);
+        methodChannel.setMethodCallHandler(this);
     }
 
-    public static void registerWith(Registrar registrar) {
-        final FlutterFlingPlugin flutterFlingPlugin = new FlutterFlingPlugin(registrar);
-
-        final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_fling");
-        channel.setMethodCallHandler(flutterFlingPlugin);
+    @Override
+    public void onDetachedFromEngine(FlutterPlugin.FlutterPluginBinding binding) {
+        if (methodChannel != null) {
+            methodChannel.setMethodCallHandler(null);
+            methodChannel = null;
+        }
+        if (flingSdk != null) {
+            flingSdk.dispose();
+            flingSdk = null;
+        }
     }
 
     @Override
@@ -123,7 +133,6 @@ public class FlutterFlingPlugin implements MethodCallHandler {
     }
 
     static class FlingSdk {
-        final Registrar registrar;
         private Set<RemoteMediaPlayer> mPlayers;
         private DiscoveryController mController;
         private RemoteMediaPlayer mCurrentDevice;
@@ -134,10 +143,9 @@ public class FlutterFlingPlugin implements MethodCallHandler {
         private QueuingEventSink playerStateEventSink = new QueuingEventSink();
         private EventChannel playerStateEventChannel;
 
-        FlingSdk(Registrar registrar) {
-            this.registrar = registrar;
-            mController = new DiscoveryController(registrar.context());
-            discoveryControllerEventChannel = new EventChannel(registrar.messenger(), DISCOVERY_CONTROLLER_STREAM);
+        FlingSdk(Context applicationContext, io.flutter.plugin.common.BinaryMessenger messenger) {
+            mController = new DiscoveryController(applicationContext);
+            discoveryControllerEventChannel = new EventChannel(messenger, DISCOVERY_CONTROLLER_STREAM);
             discoveryControllerEventChannel.setStreamHandler(
                     new EventChannel.StreamHandler() {
                         @Override
@@ -150,7 +158,7 @@ public class FlutterFlingPlugin implements MethodCallHandler {
                             discoveryControllerEventSink.setDelegate(null);
                         }
                     });
-            playerStateEventChannel = new EventChannel(registrar.messenger(), PLAYER_STATE_STREAM);
+            playerStateEventChannel = new EventChannel(messenger, PLAYER_STATE_STREAM);
             playerStateEventChannel.setStreamHandler(new EventChannel.StreamHandler() {
                 @Override
                 public void onListen(Object o, EventChannel.EventSink sink) {
@@ -162,6 +170,10 @@ public class FlutterFlingPlugin implements MethodCallHandler {
                     playerStateEventSink.setDelegate(null);
                 }
             });
+        }
+
+        void dispose() {
+            stopDiscoveryController();
         }
 
         void startDiscoveryController() {
