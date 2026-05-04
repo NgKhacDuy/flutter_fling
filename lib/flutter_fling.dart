@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_fling/remote_media_player.dart';
 
 enum PlayerDiscoveryStatus { Found, Lost }
+
 enum MediaState {
   NoSource,
   PreparingMedia,
@@ -15,6 +16,7 @@ enum MediaState {
   Finished,
   Error
 }
+
 enum MediaCondition {
   Good,
   WarningContent,
@@ -56,9 +58,9 @@ class FlutterFling {
   }
 
   static Future<void> play(PlayerStateCallback callback,
-      {@required String mediaUri,
-      @required String mediaTitle,
-      @required RemoteMediaPlayer player}) async {
+      {required String mediaUri,
+      required String mediaTitle,
+      required RemoteMediaPlayer player}) async {
     if (mediaUri != null && mediaTitle != null && player != null) {
       try {
         await _channel.invokeMethod('play', <String, dynamic>{
@@ -96,7 +98,7 @@ class FlutterFling {
     }
   }
 
-  static Future<RemoteMediaPlayer> get selectedPlayer async {
+  static Future<RemoteMediaPlayer?> get selectedPlayer async {
     dynamic player;
     try {
       player = await _channel.invokeMethod('getSelectedPlayer');
@@ -159,7 +161,7 @@ class FlutterFling {
     }
   }
 
-  static Future<void> seekToPlayer({@required int position}) async {
+  static Future<void> seekToPlayer({required int position}) async {
     try {
       await _channel.invokeMethod(
           'seekToPlayer', <String, String>{'position': position.toString()});
